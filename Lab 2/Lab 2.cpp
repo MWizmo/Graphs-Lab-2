@@ -25,6 +25,43 @@ vector<string> Split(string str, char delimiter) {
 	return vec;
 }
 
+class DSU {
+private:
+	vector<int> parent;
+	vector <int> rank;
+	int size = 0;
+public:
+	void make_set(int v) {
+		if (parent.size() < v) {
+			for (int i = size; i < v; i++) {
+				parent.push_back(0);
+				rank.push_back(0);
+			}
+			size = v;
+		}
+		parent[v-1] = v;
+		rank[v-1] = 0;
+	}
+
+	int find_set(int v) {
+		if (v == parent[v-1])
+			return v;
+		return parent[v-1] = find_set(parent[v-1]);
+	}
+
+	void union_sets(int a, int b) {
+		a = find_set(a);
+		b = find_set(b);
+		if (a != b) {
+			if (rank[a-1] < rank[b-1])
+				swap(a, b);
+			parent[b-1] = a;
+			if (rank[a-1] == rank[b-1])
+				++rank[a-1];
+		}
+	}
+};
+
 class GraphRepresentationType {
 protected:
 	int vertexNumber = 0;
@@ -482,6 +519,31 @@ public:
 	tuple<bool, bool, int> GetInfo() override {
 		return tuple<bool, bool, int>(isWeighed, isOriented, vertexNumber);
 	}
+
+	vector <tuple<int, int, int>> getSpaingTreeKruscal() {
+		vector <tuple<int, int, int>> spaingTree;
+		for (int i = 0; i < edgesNumber; i++) {
+			for (int j = i; j < edgesNumber; j++) {
+				if (get<2>(edgesList[j]) < get<2>(edgesList[i])) {
+					tuple<int, int, int> temp = edgesList[j];
+					edgesList[j] = edgesList[i];
+					edgesList[i] = temp;
+				}
+			}
+		}
+
+		DSU dsu;
+		for (int i = 0; i < vertexNumber; i++)
+			dsu.make_set(i+1);
+		for (int queue = 0; queue < edgesNumber;queue++) {
+			tuple<int, int, int> edge = edgesList[queue];
+			if (dsu.find_set(get<0>(edge)) != dsu.find_set(get<1>(edge))) {
+				dsu.union_sets(dsu.find_set(get<0>(edge)), dsu.find_set(get<1>(edge)));
+				spaingTree.push_back(edge);
+			}
+		}
+		return spaingTree;
+	}
 };
 
 class Graph {
@@ -538,12 +600,24 @@ public:
 		representation->writeGraph(fileName);
 	}
 
-	Graph getSpanningTreePrima() {
+	Graph getSpaingTreePrima() {
 		this->transformToAdjList();
 		vector<set<pair<int, int>>> minimalSpanningTree = reinterpret_cast<AdjListGraph*>(representation)->getSpaingTreePrima();
 		Graph* spanningTree = new Graph();
 		spanningTree->representation= new AdjListGraph(minimalSpanningTree, representation->GetInfo());
 		return *spanningTree;
+	}
+
+	Graph getSpaingTreeKruscal() {
+		this->transformToListOfEdges();
+		vector <tuple<int, int, int>> minimalSpanningTree = reinterpret_cast<ListOfEdgesGraph*>(representation)->getSpaingTreeKruscal();
+		Graph* spaingTree = new Graph();
+		spaingTree->representation = new ListOfEdgesGraph(minimalSpanningTree, representation->GetInfo());
+		return *spaingTree;
+	}
+	
+	Graph getSpaingTreeBoruvka() {
+
 	}
 };
 
@@ -552,7 +626,7 @@ int main()
 {
 	Graph graph = Graph();
 	graph.readGraph("TestPrima.txt");
-	Graph graph2=graph.getSpanningTreePrima();
+	Graph graph2 = graph.getSpaingTreeKruscal();
 	graph2.writeGraph("output.txt");
 	setlocale(LC_ALL, "rus");
 	system("pause");
